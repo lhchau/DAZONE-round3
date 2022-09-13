@@ -1,0 +1,211 @@
+---
+title: "Untitled"
+author: "Hoang-Chau Luong"
+date: "6/23/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ggplot2)
+library(directlabels)
+library(readxl)
+```
+
+
+
+# **User type E, F, G**
+```{r warning=FALSE, message=FALSE}
+user_type <- read_csv("data/user_type.csv")
+user_type <- user_type %>%
+  mutate(
+    type = rep(c("Android", "IOS"), 15),
+    month = rep(c(1, 1, 2, 2, 3, 3, 4, 4, 5, 5), 3)
+  )
+
+user_type %>%
+  ggplot(aes(month, value, fill = type)) +
+  geom_col() +
+  facet_wrap(~Bank, scale = "free")
+```
+
+```{r warning=FALSE, message=FALSE}
+bank_E <- read_excel('data/bank_efg.xlsx', sheet = 2)
+bank_F <- read_excel('data/bank_efg.xlsx', sheet = 4)
+bank_G <- read_excel('data/bank_efg.xlsx', sheet = 6)
+
+```
+
+```{r}
+bank_E %>%
+  filter(row_number() <= 4) %>%
+  pivot_longer(!error, names_to = "name", values_to = "value") %>% 
+  mutate(
+    month = substr(name, str_length(name), str_length(name)),
+    name = substr(name, 0, str_length(name)-2)
+  ) %>%
+  ggplot(aes(x = month, y = value, col = error, group = error)) +
+  geom_line(size = 1) +
+  geom_dl(aes(label = error), 
+          method = list(dl.combine("last.points")), cex = 1) +
+  facet_wrap(~ name) +
+  theme(
+    legend.position = "none"
+  )
+
+bank_G %>%
+  filter(row_number() <= 4) %>%
+  pivot_longer(!error, names_to = "name", values_to = "value") %>% 
+  mutate(
+    month = substr(name, str_length(name), str_length(name)),
+    name = substr(name, 0, str_length(name)-2)
+  ) %>%
+  ggplot(aes(x = month, y = value, col = error, group = error)) +
+  geom_point(size = 2.5) +
+  geom_line(size = 1) +
+  geom_dl(aes(label = error), 
+          method = list(dl.combine("last.points")), cex = 1) +
+  facet_wrap(~ name) +
+  theme(
+    legend.position = "none"
+  )
+
+bank_G %>%
+  filter(row_number() == 1) %>%
+  pivot_longer(!error, names_to = "name", values_to = "value") %>% 
+  mutate(
+    month = substr(name, str_length(name), str_length(name)),
+    name = substr(name, 0, str_length(name)-2)
+  ) %>%
+  ggplot(aes(x = month, y = value, col = name, group = name)) +
+  geom_point(size = 2.5) +
+  geom_line(size = 1) +
+  geom_dl(aes(label = error), 
+          method = list(dl.combine("last.points")), cex = 1) 
+
+bank_G %>%
+  filter(row_number() != 1) %>%
+  pivot_longer(!error, names_to = "name", values_to = "value") %>% 
+  mutate(
+    month = substr(name, str_length(name), str_length(name)),
+    name = substr(name, 0, str_length(name)-2)
+  ) %>%
+  count(name, wt = value)
+
+bank_G %>%
+  filter(row_number() == 1) %>%
+  pivot_longer(!error, names_to = "name", values_to = "value") %>% 
+  mutate(
+    month = substr(name, str_length(name), str_length(name)),
+    name = substr(name, 0, str_length(name)-2)
+  ) %>%
+  count(name, wt = value)
+```
+
+```{r}
+
+bank_F %>%
+  filter(row_number() != 1) %>%
+  filter(row_number() <= 4) %>%
+  pivot_longer(!error, names_to = "name", values_to = "value") %>% 
+  mutate(
+    month = substr(name, str_length(name), str_length(name)),
+    name = substr(name, 0, str_length(name)-2)
+  ) %>%
+  ggplot(aes(x = month, y = value, col = error, group = error)) +
+  geom_point(size = 2.5) +
+  geom_line(size = 1) +
+  geom_dl(aes(label = error), 
+          method = list(dl.combine("last.points")), cex = 1) +
+  facet_wrap(~ name) +
+  theme(
+    legend.position = "none"
+  )
+
+bank_F %>%
+  filter(row_number() == 1) %>%
+  pivot_longer(!error, names_to = "name", values_to = "value") %>% 
+  mutate(
+    month = substr(name, str_length(name), str_length(name)),
+    name = substr(name, 0, str_length(name)-2)
+  ) %>%
+  ggplot(aes(x = month, y = value, col = name, group = name)) +
+  geom_point(size = 2.5) +
+  geom_line(size = 1) +
+  geom_dl(aes(label = error), 
+          method = list(dl.combine("last.points")), cex = 1) 
+
+bank_F %>%
+  filter(row_number() != 1) %>%
+  pivot_longer(!error, names_to = "name", values_to = "value") %>% 
+  mutate(
+    month = substr(name, str_length(name), str_length(name)),
+    name = substr(name, 0, str_length(name)-2)
+  ) %>%
+  count(name, wt = value)
+
+bank_F %>%
+  filter(row_number() == 1) %>%
+  pivot_longer(!error, names_to = "name", values_to = "value") %>% 
+  mutate(
+    month = substr(name, str_length(name), str_length(name)),
+    name = substr(name, 0, str_length(name)-2)
+  ) %>%
+  count(name, wt = value)
+```
+
+
+```{r}
+
+bank_E %>%
+  filter(row_number() != 1) %>%
+  filter(row_number() <= 4) %>%
+  pivot_longer(!error, names_to = "name", values_to = "value") %>% 
+  mutate(
+    month = substr(name, str_length(name), str_length(name)),
+    name = substr(name, 0, str_length(name)-2)
+  ) %>%
+  ggplot(aes(x = month, y = value, col = error, group = error)) +
+  geom_point(size = 2.5) +
+  geom_line(size = 1) +
+  geom_dl(aes(label = error), 
+          method = list(dl.combine("last.points")), cex = 1) +
+  facet_wrap(~ name) +
+  theme(
+    legend.position = "none"
+  )
+
+bank_E %>%
+  filter(row_number() == 1) %>%
+  pivot_longer(!error, names_to = "name", values_to = "value") %>% 
+  mutate(
+    month = substr(name, str_length(name), str_length(name)),
+    name = substr(name, 0, str_length(name)-2)
+  ) %>%
+  ggplot(aes(x = month, y = value, col = name, group = name)) +
+  geom_point(size = 2.5) +
+  geom_line(size = 1) +
+  geom_dl(aes(label = error), 
+          method = list(dl.combine("last.points")), cex = 1) 
+
+bank_E %>%
+  filter(row_number() != 1) %>%
+  pivot_longer(!error, names_to = "name", values_to = "value") %>% 
+  mutate(
+    month = substr(name, str_length(name), str_length(name)),
+    name = substr(name, 0, str_length(name)-2)
+  ) %>%
+  count(name, wt = value)
+
+bank_E %>%
+  filter(row_number() == 1) %>%
+  pivot_longer(!error, names_to = "name", values_to = "value") %>% 
+  mutate(
+    month = substr(name, str_length(name), str_length(name)),
+    name = substr(name, 0, str_length(name)-2)
+  ) %>%
+  count(name, wt = value)
+```

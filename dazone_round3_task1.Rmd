@@ -1,0 +1,230 @@
+---
+title: "Untitled"
+author: "Hoang-Chau Luong"
+date: "6/23/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(lubridate)
+options(scipen = 20)
+
+theme_set(theme_light())
+```
+
+# **Import data**
+
+```{r}
+front_end <- read_csv("data/Front-end dataset.csv") %>%
+  mutate(date = as.POSIXct(timestamp/1e3, origin = "1970-01-01", tz = "UTC-7")) %>%
+  select(-6, -7)
+
+back_end <- read_csv("data/backend_dataset-2206.csv") %>%
+  mutate(date = as.POSIXct(timestamp/1e3, origin = "1970-01-01", tz = "UTC-7"))
+```
+
+## **Join Table**
+
+### **New user**
+
+```{r}
+new_user <- front_end %>%
+  select(id, screenid) %>%
+  unique() %>%
+  filter(screenid != 11) %>%
+  group_by(id) %>%
+  summarise(type = "new") %>%
+  ungroup()
+```
+
+### **Front end new user**
+
+```{r}
+front_end_ui <- front_end %>%
+  left_join(new_user, by = "id") %>%
+  mutate(type = ifelse(is.na(type), "old", type))
+```
+
+### **User type**
+
+```{r}
+user_type <- front_end_ui %>%
+  group_by(id, type) %>%
+  summarize(n = n()) %>%
+  select(-n) %>%
+  ungroup()
+```
+
+
+### **User have B**
+
+```{r}
+user_B <- back_end %>%
+  filter(stepresult == "B") %>%
+  select(id, stepresult) %>%
+  unique()
+```
+
+
+### **Back end list id**
+
+```{r}
+back_end_list_id <- back_end %>%
+  select(id) %>%
+  unique()
+```
+
+#### **Number of B each user**
+
+```{r}
+B_status_backend <- back_end %>%
+  filter(stepresult == "B") %>%
+  group_by(id) %>%
+  summarize(B_num = n()) %>%
+  right_join(back_end_list_id, by = "id") %>%
+  mutate(B_num = ifelse(is.na(B_num), 0, B_num))
+```
+
+### **User retry**
+
+```{r}
+user_retry <- back_end %>%
+  mutate(encode = ifelse(stepresult == "B", 1, 0)) %>%
+  group_by(id) %>%
+  mutate(next_code = lead(encode, order_by = id)) %>%
+  mutate(have_retrived = ((encode == 0 & next_code == 1) | 
+                            (encode == 0 & next_code == 0))) %>%
+  filter(have_retrived == TRUE) %>%
+  select(id) %>%
+  unique()
+```
+
+
+#### **Number of retry each user**
+
+```{r}
+number_user_retry <- back_end %>%
+  mutate(encode = ifelse(stepresult == "B", 1, 0)) %>% 
+  group_by(id) %>%
+  arrange(date) %>% 
+  mutate(next_code = lead(encode, order_by = id)) %>% 
+  ungroup() %>%
+  filter(!is.na(next_code)) %>%
+  group_by(id) %>%
+  summarize(retry_rate = sum(encode == 0 & next_code == 0) + sum(encode == 0 & next_code == 1)) %>%
+  right_join(back_end_list_id) %>%
+  mutate(retry_rate = ifelse(is.na(retry_rate), 0, retry_rate))
+```
+
+#### **Number of retry each user & B status**
+
+```{r}
+number_user_retry_and_B_status <- number_user_retry %>%
+  left_join(B_status_backend, by = "id") %>%
+  mutate(B_num = ifelse(B_num>=1, 1, 0))
+```
+
+#### **Number of retry each user & type user**
+
+```{r}
+number_user_retry_and_user_type <- number_user_retry %>%
+  inner_join(user_type)
+```
+
+#### **Number of retry each user & type user & B status**
+```{r}
+number_user_retry_and_B_status_and_user_type <- number_user_retry_and_B_status %>%
+  inner_join(user_type)
+```
+
+
+# **Analysis**
+
+## **Retry Rate**
+
+```{r}
+back_end %>%
+  inner_join(user_type, by = "id") %>%
+  mutate(encode = ifelse(stepresult == "-FACJ", 0, 1)) %>% 
+  arrange(id, date) %>% 
+  group_by(id) %>% 
+  mutate(next_code = lead(encode)) %>%
+  ungroup() %>% 
+  group_by(type, encode, next_code) %>%
+  summarise( 
+    n = n()
+  ) %>%
+  filter(encode == 0) %>%
+  ungroup() %>%
+  gt::gt()
+```
+
+## **Q3. What is the distribution of requests by the error for each UI? Does the new UI help reduce FACJ error?**
+
+```{r}
+back_end %>%
+  filter(stepresult != "B") %>%
+  inner_join(user_type, by = "id") %>%
+  group_by(stepresult, type) %>%
+  summarise(
+    n = n()
+  ) %>%
+  ungroup() %>%
+  ggplot(aes(x = fct_reorder(stepresult, n), y = n, fill = type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  coord_flip() +
+  theme(plot.title = element_text(face = "bold", size = 20),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.y = element_blank(),
+#        axis.text.y = element_blank(),
+#        axis.ticks.y = element_blank(),
+        strip.background = element_rect(fill="#E0ED87"),
+        strip.text = element_text(colour = 'black'),
+        legend.position="right",
+        legend.title = element_blank(),
+        legend.text = element_text(face = "bold", size = 10)
+      ) 
+```
+
+```{r}
+question3_error_distribution  <- back_end %>%
+  filter(stepresult != "B") %>%
+  inner_join(user_type, by = "id") %>%
+  group_by(stepresult, type) %>%
+  summarise(
+    n = n()
+  ) %>%
+  filter(stepresult == "-FACJ") %>%
+  inner_join(
+  back_end %>%
+  filter(stepresult != "B") %>%
+  inner_join(user_type, by = "id") %>%
+  group_by(type) %>%
+  summarise(
+    total = n()
+  ), by = "type")
+
+
+write.csv(question3_error_distribution, "question3_error_distribution.csv")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+

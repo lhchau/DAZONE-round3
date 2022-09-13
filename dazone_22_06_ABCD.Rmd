@@ -1,0 +1,624 @@
+---
+title: "Analysis On Bank A, B, C, D"
+author: "Hoang-Chau Luong"
+date: "6/22/2022"
+output:
+  html_document:
+    number_sections: yes
+    toc: yes
+    code_folding: hide
+    theme: readable
+    highlight: haddock
+  pdf_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(plotly)
+library(highcharter)
+library(gt)
+library(ggthemes)
+library(timetk)
+library(tidyverse)
+library(lubridate)
+```
+
+# **Import Data & Cleaning**
+
+## **Bank A**
+
+```{r warning=FALSE, message=FALSE}
+bank_A <- read_csv("data/Bank_A.csv")
+
+extract_day_month <- function(tibble){
+  tibble %>%
+    mutate(
+    day = substr(Date, 1, 2),
+    day = gsub("-", "", day),
+    month = substr(Date, str_length(Date)-1, str_length(Date)),
+    year = 2020,
+    Date = as.Date(paste(year, month, day, sep="-"), "%Y-%m-%d")
+  ) %>%
+    select(-day, -month, -year)
+}
+
+bank_A <- bank_A %>%
+  extract_day_month() 
+
+bank_A <- bank_A %>%
+  mutate(
+    TheDangOTrangThaiKhongGiaoDichDuoc = gsub("-", "0", TheDangOTrangThaiKhongGiaoDichDuoc),
+    SaiOTP = gsub("-", "0", SaiOTP),
+    TheDaLienKet = gsub("-", "0", TheDaLienKet)
+  ) %>%
+  mutate(
+    TheDangOTrangThaiKhongGiaoDichDuoc = as.numeric(TheDangOTrangThaiKhongGiaoDichDuoc),
+    SaiOTP = as.numeric(SaiOTP),
+    TheDaLienKet = as.numeric(TheDaLienKet)
+  )
+
+glimpse(bank_A)
+```
+
+## **Bank B**
+
+```{r warning=FALSE, message=FALSE}
+bank_B <- read_csv("data/Bank_B.csv")
+
+bank_B <- bank_B %>%
+  extract_day_month() 
+
+bank_B <- bank_B %>%
+  mutate(
+    SaiThongTinKhachHang = gsub("-", "0", SaiThongTinKhachHang),
+    TaiKhoanNganHangBiKhoa = gsub("-", "0", TaiKhoanNganHangBiKhoa),
+    HeThongDangCoLoi = gsub("-", "0", HeThongDangCoLoi),
+    TheKhongHoTro = gsub("-", "0", TheKhongHoTro),
+    OTPHetHan = gsub("-", "0", OTPHetHan),
+    TheDaLienKet = gsub("-", "0", TheDaLienKet),
+  ) %>%
+  mutate(
+    SaiThongTinKhachHang = as.numeric(SaiThongTinKhachHang),
+    TaiKhoanNganHangBiKhoa =as.numeric(TaiKhoanNganHangBiKhoa),
+    HeThongDangCoLoi = as.numeric(HeThongDangCoLoi),
+    TheKhongHoTro = as.numeric(TheKhongHoTro),
+    OTPHetHan = as.numeric(OTPHetHan),
+    TheDaLienKet = as.numeric(TheDaLienKet),
+  )
+
+glimpse(bank_B)
+```
+
+## **Bank C**
+
+```{r warning=FALSE, message=FALSE}
+bank_C <- read_csv("data/Bank_C.csv")
+
+bank_C <- bank_C %>%
+  extract_day_month() 
+
+bank_C <- bank_C %>%
+  mutate(
+    GiaoDichDangXuLy = gsub("-", "0", GiaoDichDangXuLy),
+    ThongTinXacThucKhongHopLe = gsub("-", "0", ThongTinXacThucKhongHopLe),
+  ) %>%
+  mutate(
+    KhongNhanDuocPhanHoiTuNganHang = as.numeric(KhongNhanDuocPhanHoiTuNganHang),
+    GiaoDichDangXuLy = as.numeric(GiaoDichDangXuLy),
+    ThongTinXacThucKhongHopLe =as.numeric(ThongTinXacThucKhongHopLe),
+  )
+
+glimpse(bank_C)
+```
+
+## **Bank D**
+
+```{r warning=FALSE, message=FALSE}
+bank_D <- read_csv("data/Bank_D.csv")
+
+bank_D <- bank_D %>%
+  extract_day_month() 
+
+bank_D <- bank_D %>%
+  mutate(
+    KhachHangHuyGiaoDich = gsub("-", "0", KhachHangHuyGiaoDich),
+    ThongTinDangNhapKhongDung = gsub("-", "0", ThongTinDangNhapKhongDung),
+    HeThongNganHangDangCoLoi = gsub("-", "0", HeThongNganHangDangCoLoi),
+    TheDaLienKet = gsub("-", "0", TheDaLienKet),
+    HeThongNganHangDangCoLoi2 = gsub("-", "0", HeThongNganHangDangCoLoi2),
+    OTPHetHan = gsub("-", "0", OTPHetHan),
+  ) %>%
+  mutate(
+    KhachHangHuyGiaoDich = as.numeric(KhachHangHuyGiaoDich),
+    ThongTinDangNhapKhongDung =as.numeric(ThongTinDangNhapKhongDung),
+    HeThongNganHangDangCoLoi = as.numeric(HeThongNganHangDangCoLoi),
+    TheDaLienKet = as.numeric(TheDaLienKet),
+    HeThongNganHangDangCoLoi2 = as.numeric(HeThongNganHangDangCoLoi2),
+    OTPHetHan = as.numeric(OTPHetHan),
+  )
+
+glimpse(bank_D)
+```
+
+
+# **Time series analysiss - Exploring Seasonality and Pattern**
+
+## **Bank A**
+```{r warning=FALSE, message=FALSE}
+# cols_low_value <- c("SaiOTP", "TheDaLienKet", "TheDangOTrangThaiKhongGiaoDichDuoc")
+
+time_series_bank_A <- bank_A %>%
+  pivot_longer(!Date, names_to = "name", values_to = "value")
+```
+
+## **Bank B**
+
+```{r warning=FALSE, message=FALSE}
+time_series_bank_B <- bank_B %>%
+  pivot_longer(!Date, names_to = "name", values_to = "value")
+```
+
+## **Bank C**
+
+```{r warning=FALSE, message=FALSE}
+time_series_bank_C <- bank_C %>%
+  pivot_longer(!Date, names_to = "name", values_to = "value")
+```
+
+## **Bank D**
+
+```{r warning=FALSE, message=FALSE}
+time_series_bank_D <- bank_D %>%
+  pivot_longer(!Date, names_to = "name", values_to = "value")
+```
+
+
+```{r warning=FALSE, message=FALSE}
+convert_date_ts <- function(data, unit = "day"){
+  
+  new_data <- data %>% 
+    mutate(Date = floor_date(Date, unit = unit))
+  
+  return(new_data)
+}
+```
+
+## **Daily**
+
+### **Bank A**
+```{r warning=FALSE, message=FALSE}
+time_series_bank_A %>%
+  convert_date_ts() %>%
+  group_by(name) %>%
+  plot_time_series(
+    .date_var = Date,
+    .value = value,
+    .facet_ncol = 2,
+    .smooth_color = "#18BC9C",
+    .smooth_size = 0.5
+  )
+```
+
+### **Bank B**
+
+```{r warning=FALSE, message=FALSE}
+time_series_bank_B %>%
+  convert_date_ts() %>%
+  group_by(name) %>%
+  plot_time_series(
+    .date_var = Date,
+    .value = value,
+    .facet_ncol = 2,
+    .smooth_color = "#18BC9C",
+    .smooth_size = 0.5
+  )
+```
+
+### **Bank C**
+
+```{r warning=FALSE, message=FALSE}
+time_series_bank_C %>%
+  convert_date_ts() %>%
+  group_by(name) %>%
+  plot_time_series(
+    .date_var = Date,
+    .value = value,
+    .facet_ncol = 2,
+    .smooth_color = "#18BC9C",
+    .smooth_size = 0.5
+  )
+```
+
+### **Bank D**
+
+```{r warning=FALSE, message=FALSE}
+time_series_bank_D %>%
+  convert_date_ts() %>%
+  group_by(name) %>%
+  plot_time_series(
+    .date_var = Date,
+    .value = value,
+    .facet_ncol = 2,
+    .smooth_color = "#18BC9C",
+    .smooth_size = 0.5
+  )
+```
+
+## **Weekly**
+
+```{r warning=FALSE, message=FALSE}
+time_series_bank_A %>%
+  convert_date_ts(unit = "week") %>%
+  group_by(name) %>%
+  plot_time_series(
+    .date_var = Date,
+    .value = value,
+    .facet_ncol = 2,
+    .smooth_color = "#18BC9C",
+    .smooth_size = 0.5
+  )
+```
+
+## **Monthly**
+
+```{r warning=FALSE, message=FALSE}
+time_series_bank_A %>%
+  convert_date_ts(unit = "month") %>%
+  group_by(name) %>%
+  plot_time_series(
+    .date_var = Date,
+    .value = value,
+    .facet_ncol = 2,
+    .smooth_color = "#18BC9C",
+    .smooth_size = 0.5
+  )
+```
+
+## **Outlier Detection**
+
+```{r warning=FALSE, message=FALSE}
+time_series_bank_A %>%
+ group_by(name) %>%
+  plot_anomaly_diagnostics(
+    .date = Date,
+    .value = value,
+    .facet_ncol = 2,
+    .interactive=FALSE,
+    .title = "Anomaly Diagnostics Dow Jones",
+    .anom_color ="#FB3029", 
+    .max_anomalies = 0.07, 
+    .alpha = 0.05
+    )
+```
+
+## **Seasonality Patterns**
+
+```{r warning=FALSE, message=FALSE}
+# time_series_bank_A %>% 
+#   plot_seasonal_diagnostics(
+#     .date_var = Date,
+#     .value = value,
+#     .interactive = FALSE,
+#     .geom_color = "#4E79A7"
+#   )
+```
+
+
+
+# **Analysis**
+
+## **Time series plot**
+
+```{r warning=FALSE, message=FALSE}
+bank_A_April_plot <- time_series_bank_A %>%
+  filter(month(Date) == 4) %>%
+  ggplot(aes(Date, value)) +
+  geom_line() +
+  facet_wrap(~ name, scales = "free") +
+  geom_smooth(method = "lm")
+  
+
+bank_A_May_plot <- time_series_bank_A %>%
+  filter(month(Date) == 5) %>%
+  ggplot(aes(Date, value)) +
+  geom_line() +
+  facet_wrap(~ name, scales = "free") +
+  geom_smooth(method = "lm")
+
+
+time_series_bank_A %>%
+  ggplot(aes(Date, value)) +
+  geom_line(aes(group = name, col = name), size = 1) 
+
+sbank_A_April_plot
+bank_A_May_plot
+```
+
+## **GiaoDichThanhCong vs ThatBai**
+
+### **Bank A**
+
+```{r warning=FALSE, message=FALSE}
+number_of_failures_bank_A <- bank_A %>%
+  select(-GiaoDichThanhCong) %>%
+  pivot_longer(!Date, names_to = "name", values_to = "value") %>%
+  group_by(Date) %>%
+  summarise(
+    ThatBai = sum(value, na.rm = TRUE)
+  )
+
+bank_A %>% 
+  inner_join(number_of_failures, by = "Date") %>%
+  group_by(Date) %>%
+  summarise(success_rate = GiaoDichThanhCong/(GiaoDichThanhCong+ThatBai)) %>%
+  ggplot(aes(Date, success_rate)) +
+  geom_line() +
+  geom_smooth(method = "lm")
+```
+
+### **Bank B**
+
+```{r warning=FALSE, message=FALSE}
+number_of_failures_bank_B <- bank_B %>%
+  select(-GiaoDichThanhCong) %>%
+  pivot_longer(!Date, names_to = "name", values_to = "value") %>%
+  group_by(Date) %>%
+  summarise(
+    ThatBai = sum(value, na.rm = TRUE)
+  )
+
+bank_B %>% 
+  inner_join(number_of_failures, by = "Date") %>%
+  group_by(Date) %>%
+  summarise(success_rate = GiaoDichThanhCong/(GiaoDichThanhCong+ThatBai)) %>%
+  ggplot(aes(Date, success_rate)) +
+  geom_line() +
+  geom_smooth(method = "lm")
+```
+
+### **Bank C**
+
+```{r warning=FALSE, message=FALSE}
+number_of_failures_bank_C <- bank_C %>%
+  select(-GiaoDichThanhCong) %>%
+  pivot_longer(!Date, names_to = "name", values_to = "value") %>%
+  group_by(Date) %>%
+  summarise(
+    ThatBai = sum(value, na.rm = TRUE)
+  )
+
+bank_C %>% 
+  inner_join(number_of_failures, by = "Date") %>%
+  group_by(Date) %>%
+  summarise(success_rate = GiaoDichThanhCong/(GiaoDichThanhCong+ThatBai)) %>%
+  ggplot(aes(Date, success_rate)) +
+  geom_line() +
+  geom_smooth(method = "lm")
+```
+
+### **Bank D**
+
+```{r warning=FALSE, message=FALSE}
+number_of_failures_bank_D <- bank_D %>%
+  select(-GiaoDichThanhCong) %>%
+  pivot_longer(!Date, names_to = "name", values_to = "value") %>%
+  group_by(Date) %>%
+  summarise(
+    ThatBai = sum(value, na.rm = TRUE)
+  )
+
+bank_D %>% 
+  inner_join(number_of_failures, by = "Date") %>%
+  group_by(Date) %>%
+  summarise(success_rate = GiaoDichThanhCong/(GiaoDichThanhCong+ThatBai)) %>%
+  ggplot(aes(Date, success_rate)) +
+  geom_line() +
+  geom_smooth(method = "lm")
+```
+
+
+## **Compare with lag day**
+
+```{r warning=FALSE, message=FALSE}
+lag_bank_A <- bank_A %>%
+  mutate(
+    lag_TheChuaBatEcom = lag(TheChuaBatEcom),
+    lag_GiaoDichThanhCong = lag(GiaoDichThanhCong),
+    lag_SaiSoDienThoai = lag(SaiSoDienThoai),
+    lag_SaiTenChuThe = lag(SaiTenChuThe),
+    lag_SaiSoCMND = lag(SaiSoCMND),
+    lag_SaiNgayPhatHanhThe = lag(SaiNgayPhatHanhThe),
+    lag_KhongNhanDuocXacThucOTP = lag(KhongNhanDuocXacThucOTP),
+    lag_TheDangOTrangThaiKhongGiaoDichDuoc = lag(TheDangOTrangThaiKhongGiaoDichDuoc),
+    lag_SaiOTP = lag(SaiOTP),
+    lag_TheDaLienKet = lag(TheDaLienKet)
+  )
+```
+
+```{r warning=FALSE, message=FALSE}
+delta_bank_A <- bank_A %>%
+  mutate(
+    delta_TheChuaBatEcom = TheChuaBatEcom - lag(TheChuaBatEcom),
+    delta_GiaoDichThanhCong = GiaoDichThanhCong - lag(GiaoDichThanhCong),
+    delta_SaiSoDienThoai = SaiSoDienThoai - lag(SaiSoDienThoai),
+    delta_SaiTenChuThe = SaiTenChuThe - lag(SaiTenChuThe),
+    delta_SaiSoCMND = SaiSoCMND - lag(SaiSoCMND),
+    delta_SaiNgayPhatHanhThe = SaiNgayPhatHanhThe - lag(SaiNgayPhatHanhThe),
+    delta_KhongNhanDuocXacThucOTP = KhongNhanDuocXacThucOTP - lag(KhongNhanDuocXacThucOTP),
+    delta_TheDangOTrangThaiKhongGiaoDichDuoc = TheDangOTrangThaiKhongGiaoDichDuoc- lag(TheDangOTrangThaiKhongGiaoDichDuoc),
+    delta_SaiOTP = SaiOTP - lag(SaiOTP),
+    delta_TheDaLienKet = SaiOTP - lag(TheDaLienKet)
+  )
+
+delta_bank_A %>%
+  select(Date, starts_with("delta")) %>%
+  filter()
+```
+
+
+
+# **Hypothesis Testing**
+
+## **Success Rate of May higher than April**
+
+### **Bank A**
+
+```{r warning=FALSE, message=FALSE}
+bank_A %>%
+  inner_join(number_of_failures, by = "Date") %>%
+  mutate(month = month(Date)) %>%
+  group_by(month) %>%
+  summarise( 
+    total_success = sum(GiaoDichThanhCong),
+    total_failure = sum(ThatBai),
+    success_rate = total_success/(total_success+total_failure)
+    )
+
+z_test_hypothesis <- function(s1, s2, f1, f2){
+  p_total <- (s1+s2)/(s1+f1+s2+f2)
+  p1_hat <- s1/(s1+f1)
+  p2_hat <- s2/(s2+f2)
+  
+  p_hat <- ((s1+f1)*p1_hat + (s2+f2)*p2_hat)/(s1+f1+s2+f2)
+  
+  z_obs <- (p1_hat-p2_hat)/sqrt(p_hat*(1-p_hat)*(1/(s1+f1) + 1/(s1+f1))) 
+  
+  p_value <- 1-pnorm(abs(z_obs))
+  
+  return(c(p_total, p1_hat, p2_hat, p_value))
+}
+
+z_test_hypothesis(8401, 9322, 22279, 20945)
+```
+
+
+### **Bank B**
+
+```{r warning=FALSE, message=FALSE}
+bank_B %>%
+  inner_join(number_of_failures_bank_B, by = "Date") %>%
+  mutate(month = month(Date)) %>%
+  group_by(month) %>%
+  summarise( 
+    total_success = sum(GiaoDichThanhCong),
+    total_failure = sum(ThatBai),
+    success_rate = total_success/(total_success+total_failure)
+    )
+
+z_test_hypothesis(7020, 7236, 7125, 6385)
+```
+
+### **Bank C**
+
+```{r warning=FALSE, message=FALSE}
+bank_C %>%
+  inner_join(number_of_failures_bank_C, by = "Date") %>%
+  mutate(month = month(Date)) %>%
+  group_by(month) %>%
+  summarise( 
+    total_success = sum(GiaoDichThanhCong),
+    total_failure = sum(ThatBai),
+    success_rate = total_success/(total_success+total_failure)
+    )
+
+z_test_hypothesis(11229, 9268, 30458, 27753)
+```
+
+### **Bank D**
+
+```{r}
+bank_D %>%
+  inner_join(number_of_failures_bank_D, by = "Date") %>%
+  mutate(month = month(Date)) %>%
+  group_by(month) %>%
+  summarise( 
+    total_success = sum(GiaoDichThanhCong),
+    total_failure = sum(ThatBai),
+    success_rate = total_success/(total_success+total_failure)
+    )
+
+z_test_hypothesis(3607, 4952, 20921, 19088)
+```
+
+## **Which highest Error of each Bank**
+
+```{r}
+bank_A %>%
+  summarise(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) 
+
+bank_B %>%
+  summarise(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) 
+
+bank_C %>%
+  summarise(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) 
+
+bank_D %>%
+  summarise(across(where(is.numeric), ~ sum(.x, na.rm = TRUE))) 
+
+bank_A %>%
+  pivot_longer(!Date, names_to = "name", values_to = "value") %>%
+  select(name) %>%
+  unique() %>%
+  inner_join(bank_B %>%
+            pivot_longer(!Date, names_to = "name", values_to = "value") %>%
+            select(name) %>%
+            unique(), by = "name")
+
+bank_C %>%
+  pivot_longer(!Date, names_to = "name", values_to = "value") %>%
+  select(name) %>%
+  unique() %>%
+  inner_join(bank_B %>%
+            pivot_longer(!Date, names_to = "name", values_to = "value") %>%
+            select(name) %>%
+            unique(), by = "name")
+
+```
+
+# **User type E, F, G**
+```{r}
+user_type <- read_csv("data/user_type.csv")
+user_type <- user_type %>%
+  mutate(
+    type = rep(c("Android", "IOS"), 15),
+    month = rep(c(1, 1, 2, 2, 3, 3, 4, 4, 5, 5), 3)
+  )
+
+user_type %>%
+  ggplot(aes(month, value, fill = type)) +
+  geom_col() +
+  facet_wrap(~Bank, scale = "free")
+```
+
+```{r}
+bank_E <- read_excel('data/bank_efg.xlsx', sheet = 2)
+
+bank_E %>%
+  pivot_longer(!error, names_to = "name", values_to = "value") %>% 
+  mutate(
+    month = substr(name, str_length(name), str_length(name)),
+    name = substr(name, 0, str_length(name)-2)
+  ) %>%
+  ggplot(aes(x = month, y = value, col = error, group = error)) +
+  geom_line()
+```
+
+```{r}
+time_series_bank_A %>%
+  count(name, wt = value)
+
+time_series_bank_B %>%
+  count(name, wt = value)
+
+time_series_bank_C %>%
+  count(name, wt = value, sort = TRUE)
+
+time_series_bank_D %>%
+  count(name, wt = value, sort = TRUE)
+```
+
+
+
+
+
